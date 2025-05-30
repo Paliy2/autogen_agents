@@ -332,3 +332,4 @@ grafana_data/grafana.db
 pg_mcp_voiceaiagents_dev_db.yml
 developer-key.json
 .gmail.service.accounts.json
+.idea/*
