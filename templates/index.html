@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AutoGen Poem Chat</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #chatbox {
+            width: 90%;
+            max-width: 700px;
+            height: 400px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .message { margin-bottom: 8px; padding: 5px; border-radius: 4px; }
+        .message .sender { font-weight: bold; color: #333; }
+        .message .content { margin-left: 5px; color: #555; }
+        .user-message { background-color: #e1f5fe; } /* Light blue for user */
+        .assistant-message { background-color: #e8f5e9; } /* Light green for assistant */
+        #inputArea { display: flex; width: 90%; max-width: 700px;}
+        #userInput { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px 0 0 4px;}
+        #sendButton, #startButton { padding: 8px 15px; border: none; color: white; cursor: pointer; }
+        #sendButton { background-color: #007bff; border-radius: 0 4px 4px 0; }
+        #startButton { background-color: #28a745; margin-left: 5px; border-radius: 4px; }
+        #topicInput { padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px;}
+        #initialPromptArea { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <h1>AutoGen Poem Chat</h1>
+    <div id="chatbox"></div>
+
+    <div id="initialPromptArea">
+        <input type="text" id="topicInput" placeholder="Enter poem topic (e.g., 'a rainy day')">
+        <button id="startButton">Start Poem</button>
+    </div>
+
+    <div id="inputArea" style="display:none;">
+        <input type="text" id="userInput" placeholder="Type your feedback or 'exit' to end...">
+        <button id="sendButton">Send</button>
+    </div>
+
+    <script>
+        const socket = io();
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const topicInput = document.getElementById('topicInput');
+        const startButton = document.getElementById('startButton');
+        const initialPromptArea = document.getElementById('initialPromptArea');
+        const inputArea = document.getElementById('inputArea');
+
+        function addMessage(sender, content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.classList.add(isUser ? 'user-message' : 'assistant-message');
+
+            const senderSpan = document.createElement('span');
+            senderSpan.classList.add('sender');
+            senderSpan.textContent = sender + ": ";
+
+            const contentSpan = document.createElement('span');
+            contentSpan.classList.add('content');
+            contentSpan.innerHTML = content.replace(/\n/g, '<br>');
+
+            messageDiv.appendChild(senderSpan);
+            messageDiv.appendChild(contentSpan);
+            chatbox.appendChild(messageDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        socket.on('connect', () => {
+            addMessage('System', 'Connected to server.');
+        });
+
+        socket.on('disconnect', () => {
+            addMessage('System', 'Disconnected from server.');
+            inputArea.style.display = 'none';
+            initialPromptArea.style.display = 'block';
+        });
+
+        socket.on('assistant_message', (data) => {
+            addMessage(data.sender, data.content);
+            if (data.sender === "UserProxy" && data.content.includes("Type your response")) {
+                 inputArea.style.display = 'flex';
+                 userInput.focus();
+            }
+            if (data.sender === "System" && data.content.includes("Chat ended.")) {
+                inputArea.style.display = 'none';
+                initialPromptArea.style.display = 'block';
+                topicInput.value = '';
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage('You', message, true);
+                socket.emit('user_response', { message: message });
+                userInput.value = '';
+                inputArea.style.display = 'none';
+            }
+        });
+        userInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            const topic = topicInput.value.trim();
+            if (topic) {
+                socket.emit('start_chat', { topic: topic });
+                initialPromptArea.style.display = 'none';
+            } else {
+                alert("Please enter a topic for the poem.");
+            }
+        });
+    </script>
+</body>
+</html>

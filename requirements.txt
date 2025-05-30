@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-socketio
+pyautogen>=0.2.18
+openai
+python-dotenv==1.0.1
+pydantic_settings
+socketio
+autogen
+asyncio
